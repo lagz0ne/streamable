@@ -1,0 +1,8 @@
+{
+  "name": "streamable",
+  "version": "1.0.0",
+  "description": "Easypeasy package to stream and listenable",
+  "dependencies": {
+    "vitest": "^2.1.6"
+  }
+}

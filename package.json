@@ -1,0 +1,7 @@
+{
+  "name": "streamable-home",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ]
+}
