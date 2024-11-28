@@ -31,7 +31,7 @@ export type ValueStream<P, API extends StreamAPI> = {
   subscribe: (listener: Notifier) => () => void;
   value: () => P;
   start: (initialValue: P) => void;
-  isStarted: () => Promise<boolean>
+  isStarted: () => Promise<void>
   stop: () => void;
   controller: () => API
 };
@@ -43,11 +43,22 @@ type StreamState<P, API extends StreamAPI> =
 
 function noOps() { }
 
+function defferedPromise<P>(): Promise<P> & {
+  resolve: (value: P) => void;
+  reject: (reason?: unknown) => void;
+} {
+  let resolve: (value: P) => void;
+  let reject: (reason?: unknown) => void;
+  const promise: Promise<P> = new Promise((res, rej) => { resolve = res; reject = rej; });
+  // biome-ignore lint/style/noNonNullAssertion: <explanation>
+  return Object.assign(promise, { resolve: resolve!, reject: reject! });
+}
+
 function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): ValueStream<P, API> {
   const listeners = new Set<Notifier>();
 
   let state: StreamState<P, API> = { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 };
-  let isStarted: Promise<boolean> = Promise.resolve(false);
+  let isStarted = defferedPromise<void>();
 
   const notifier: Announcer<P> = {
     next: (p: P) => {
@@ -81,7 +92,7 @@ function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): V
     const startPromise = fn(notifier, initialValue);
     if (Promise.resolve(startPromise) !== startPromise) {
       const [ender, api] = startPromise as StreamController<API>;
-      isStarted = Promise.resolve(true);
+      isStarted.resolve();
       state = { state: "running", unsubscribe: ender, controller: api as API, container: { current: initialValue }, version: 0 };
       return
     }
@@ -89,7 +100,7 @@ function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): V
     state = { state: "starting", signal: startPromise };
     Promise.resolve(startPromise)
       .then(([ender, api]) => {
-        isStarted = Promise.resolve(true);
+        isStarted.resolve();
         state = { state: "running", unsubscribe: ender, controller: api as API, container: { current: initialValue }, version: 0 };
       })
 
@@ -104,13 +115,13 @@ function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): V
       state.unsubscribe();
     }
 
-    isStarted = Promise.resolve(false);
+    isStarted = defferedPromise();
     state = { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 };
   }
 
   return {
     start, stop,
-    isStarted: () => isStarted,
+    isStarted: async () => await isStarted,
     version: () => {
       if (state.state !== "running") {
         throw new Error("Stream is not running");
