@@ -6,15 +6,16 @@ import React, {
 	useContext,
 	useSyncExternalStore,
 	useMemo,
+	useState,
 } from "react";
 import {
 	type StreamSPI,
-	createStream,
+	createStream as _createStream,
 	type StreamInstance,
 	type Streamable,
 } from "streambly";
 
-export function createStreamable<
+export function createStream<
 	P,
 	API extends StreamSPI = undefined,
 	Config = undefined,
@@ -30,10 +31,27 @@ export function createStreamable<
 		config: Config;
 	}>) {
 		const stream = useMemo(() => {
-			return createStream<P, API, Config>(streamable, initialValue, config);
+			return _createStream<P, API, Config>(streamable, initialValue, config);
 		}, [streamable, initialValue, config]);
 
-		useEffect(() => stream.stop, [stream]);
+		const [isStarted, setIsStarted] = useState<boolean>(false);
+
+		useEffect(() => {
+			const checkIsStarted = async () => {
+				const result = stream.isStarted();
+				if (result !== undefined) {
+					await result;
+				}
+				setIsStarted(true);
+			};
+			checkIsStarted();
+
+			return stream.stop;
+		}, [stream]);
+
+		if (!isStarted) {
+			return null;
+		}
 
 		return (
 			<streamableContext.Provider value={stream}>
