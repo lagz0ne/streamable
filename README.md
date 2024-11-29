@@ -56,3 +56,24 @@ setInterval(() => {
 
 
 ```
+
+## Usage with react
+
+ꜱᴛʀᴇᴀᴍʙʟʏ comes with a package called ꜱᴛʀᴇᴀᴍʙʟʏ-react to cover what's needed in react
+
+```typescript
+// instead of creating a stream in nodejs, do so in react
+
+import { createStream } from "streambly-react";
+
+const { Provider, useController, useValueStream } = createStream(counterApp)
+
+//....
+<Provider initialValue={...} >
+
+</Provider>
+
+const count = useValueStream()
+<div>{count}</div>
+
+```
