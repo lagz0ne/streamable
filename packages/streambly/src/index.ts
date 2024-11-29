@@ -118,6 +118,7 @@ export function createStream<P, API extends StreamSPI = undefined, Config = unde
         throw new Error("Stream is not running");
       }
 
+
       return state.version;
     },
     subscribe: (listener: Notifier) => {
