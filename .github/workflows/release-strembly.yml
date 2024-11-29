@@ -8,6 +8,12 @@ on:
       - main
     paths:
       - "packages/streambly/**"
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - "packages/streambly/**"
 
 name: release-please
 jobs:
