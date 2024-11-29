@@ -12,7 +12,7 @@ import {
 	createStream,
 	type StreamInstance,
 	type Streamable,
-} from "streamable";
+} from "streambly";
 
 export function createStreamable<
 	P,
