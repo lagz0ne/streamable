@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: 'Release type (major, minor, patch)'
+        required: false
+        default: ''
 
 jobs:
   check-changes:
@@ -11,6 +17,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Check for changes in strembly
         id: strembly-changes
@@ -26,7 +35,7 @@ jobs:
         if: steps.strembly-changes.outputs.result == 'changes'
         uses: google-github-actions/release-please-action@v4
         with:
-          release-type: node
+          release-type: ${{ github.event.inputs.release-type || 'default' }}
           package-name: strembly
           path: packages/strembly
 
@@ -34,7 +43,7 @@ jobs:
         if: steps.strembly-react-changes.outputs.result == 'changes'
         uses: google-github-actions/release-please-action@v4
         with:
-          release-type: node
+          release-type: ${{ github.event.inputs.release-type || 'default' }}
           package-name: strembly-react
           path: packages/strembly-react
 
@@ -44,6 +53,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
