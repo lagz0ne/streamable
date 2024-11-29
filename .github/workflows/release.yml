@@ -1,0 +1,84 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for changes in strembly
+        id: strembly-changes
+        run: |
+          if git diff --quiet HEAD^ HEAD -- packages/strembly; then echo "no changes"; else echo "changes"; fi
+
+      - name: Check for changes in strembly-react
+        id: strembly-react-changes
+        run: |
+          if git diff --quiet HEAD^ HEAD -- packages/strembly-react; then echo "no changes"; else echo "changes"; fi
+
+      - name: Create PR for strembly
+        if: steps.strembly-changes.outputs.result == 'changes'
+        uses: google-github-actions/release-please-action@v4
+        with:
+          release-type: node
+          package-name: strembly
+          path: packages/strembly
+
+      - name: Create PR for strembly-react
+        if: steps.strembly-react-changes.outputs.result == 'changes'
+        uses: google-github-actions/release-please-action@v4
+        with:
+          release-type: node
+          package-name: strembly-react
+          path: packages/strembly-react
+
+  build-and-release:
+    needs: [check-changes]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build and test strembly
+        if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'release-please--branches--main--components--strembly'
+        run: |
+          cd packages/strembly
+          yarn build
+          yarn test
+
+      - name: Publish strembly
+        if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'release-please--branches--main--components--strembly'
+        run: |
+          cd packages/strembly
+          yarn publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build and test strembly-react
+        if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'release-please--branches--main--components--strembly-react'
+        run: |
+          cd packages/strembly-react
+          yarn build
+          yarn test
+
+      - name: Publish strembly-react
+        if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'release-please--branches--main--components--strembly-react'
+        run: |
+          cd packages/strembly-react
+          yarn publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
