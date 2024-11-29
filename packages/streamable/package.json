@@ -2,7 +2,24 @@
   "name": "streamable",
   "version": "1.0.0",
   "description": "Easypeasy package to stream and listenable",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "dependencies": {
-    "vitest": "^2.1.6"
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "build": "bunx tsup src/index.ts --format cjs,esm --dts",
+    "test": "bunx vitest"
   }
 }

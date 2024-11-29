@@ -1,21 +1,21 @@
 export type Notifier = () => void;
 export type StreamEnder = () => void;
-export type StreamAPI = Record<string, unknown> | undefined
-export type StreamController<API extends StreamAPI> = [StreamEnder, API | undefined]
+export type StreamSPI = Record<string, unknown> | undefined
+export type StreamController<API extends StreamSPI> = [StreamEnder, API]
 
-export function withAPI<API extends StreamAPI>(api: API): StreamController<API> {
+export function withAPI<API extends StreamSPI>(api: API): StreamController<API> {
   return [noOps, api];
 }
 
-export function withController<API extends StreamAPI>(ender: StreamEnder, api: API): StreamController<API> {
+export function withController<API extends StreamSPI>(ender: StreamEnder, api: API): StreamController<API> {
   return [ender, api];
 }
 
-export function withEnder<API extends StreamAPI>(ender: StreamEnder): StreamController<API> {
+export function withEnder(ender: StreamEnder): StreamController<undefined> {
   return [ender, undefined];
 }
 
-export function withNoCleanups<API extends StreamAPI>(): StreamController<API> {
+export function withNoCleanups(): StreamController<undefined> {
   return [noOps, undefined];
 }
 
@@ -24,19 +24,18 @@ export type Announcer<P> = {
   end: (p: P) => void;
 };
 
-export type Streamable<P, API extends StreamAPI> = (notifier: Announcer<P>, initialValue: P) => StreamController<API> | Promise<StreamController<API>>;
+export type Streamable<P, API extends StreamSPI, Config> = (notifier: Announcer<P>, initialValue: P, config: Config) => StreamController<API> | Promise<StreamController<API>>;
 
-export type ValueStream<P, API extends StreamAPI> = {
+export type StreamInstance<P, API extends StreamSPI> = {
   version: () => number;
   subscribe: (listener: Notifier) => () => void;
   value: () => P;
-  start: (initialValue: P) => void;
-  isStarted: () => Promise<void>
   stop: () => void;
   controller: () => API
-};
+  isStarted: () => Promise<void>
+}
 
-type StreamState<P, API extends StreamAPI> =
+type StreamState<P, API extends StreamSPI> =
   | { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 }
   | { state: "starting", signal: Promise<unknown> }
   | { state: "running", unsubscribe: StreamEnder, container: { current: P }, controller: API, version: number }
@@ -54,11 +53,24 @@ function defferedPromise<P>(): Promise<P> & {
   return Object.assign(promise, { resolve: resolve!, reject: reject! });
 }
 
-function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): ValueStream<P, API> {
+export function createStream<P, API extends StreamSPI = undefined, Config = undefined>(fn: Streamable<P, API, Config>, initialValue: P, config: Config): StreamInstance<P, API> {
   const listeners = new Set<Notifier>();
 
   let state: StreamState<P, API> = { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 };
   let isStarted = defferedPromise<void>();
+
+  function stop() {
+    if (state.state === "stop") {
+      throw new Error("Stream is already stopped");
+    }
+
+    if (state.state === "running") {
+      state.unsubscribe();
+    }
+
+    isStarted = defferedPromise();
+    state = { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 };
+  }
 
   const notifier: Announcer<P> = {
     next: (p: P) => {
@@ -84,43 +96,22 @@ function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): V
     }
   }
 
-  function start(initialValue: P) {
-    if (state.state === "running") {
-      throw new Error("Stream is already running");
-    }
-
-    const startPromise = fn(notifier, initialValue);
-    if (Promise.resolve(startPromise) !== startPromise) {
-      const [ender, api] = startPromise as StreamController<API>;
-      isStarted.resolve();
-      state = { state: "running", unsubscribe: ender, controller: api as API, container: { current: initialValue }, version: 0 };
-      return
-    }
-
+  const startPromise = fn(notifier, initialValue, config);
+  if (Promise.resolve(startPromise) !== startPromise) {
+    const [ender, api] = startPromise as StreamController<API>;
+    isStarted.resolve();
+    state = { state: "running", unsubscribe: ender, controller: api as API, container: { current: initialValue }, version: 0 };
+  } else {
     state = { state: "starting", signal: startPromise };
     Promise.resolve(startPromise)
       .then(([ender, api]) => {
         isStarted.resolve();
         state = { state: "running", unsubscribe: ender, controller: api as API, container: { current: initialValue }, version: 0 };
       })
-
-  }
-
-  function stop() {
-    if (state.state === "stop") {
-      throw new Error("Stream is already stopped");
-    }
-
-    if (state.state === "running") {
-      state.unsubscribe();
-    }
-
-    isStarted = defferedPromise();
-    state = { state: "stop", unsubscribe: undefined, container: undefined, controller: undefined, version: 0 };
   }
 
   return {
-    start, stop,
+    stop,
     isStarted: async () => await isStarted,
     version: () => {
       if (state.state !== "running") {
@@ -147,11 +138,9 @@ function stream<P, API extends StreamAPI = undefined>(fn: Streamable<P, API>): V
 
       return state.controller as API;
     }
-  };
+  } satisfies StreamInstance<P, API>;
 }
 
-export function createStream<P, API extends StreamAPI = undefined>(
-  streamable: Streamable<P, API>
-): ValueStream<P, API> {
-  return stream(streamable);
+export function createStreamable<P, API extends StreamSPI = undefined, Config = undefined>(streamable: Streamable<P, API, Config>): Streamable<P, API, Config> {
+  return streamable;
 }

@@ -1,26 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createStream, withAPI, withController } from './index';
+import { createStream, createStreamable, withAPI, withController } from '../src/index';
 
 type API = {
   inc: () => void
 }
 
 describe('createStream', () => {
+  const numberStream = createStreamable<number, API>(({ next }, seed) => {
+    let _seed = seed
+
+    return withAPI({
+      inc: () => {
+        next(++_seed);
+      }
+    })
+  })
+
   it('should start and stop the stream correctly', async () => {
     const notify = vi.fn()
-    const stream = createStream<number, API>(({ next }, seed) => {
-      let _seed = seed
-
-      return withAPI({
-        inc: () => {
-          next(++_seed);
-        }
-      })
-    });
+    const stream = createStream(numberStream, 1, undefined)
 
     const unsub = stream.subscribe(notify)
 
-    stream.start(1);
     await stream.isStarted()
     expect(stream.value()).toBe(1);
 
@@ -44,9 +45,8 @@ describe('createStream with timeout/promise', () => {
     const stream = createStream<number>(({ next }, seed) => {
       setTimeout(() => next(seed + 1), 100);
       return withAPI(undefined);
-    });
+    }, 1, undefined);
 
-    stream.start(1);
     stream.subscribe(notify);
 
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -62,9 +62,8 @@ describe('createStream with timeout/promise', () => {
       new Promise<number>((resolve) => setTimeout(() => resolve(seed + 1), 100))
         .then(next);
       return withAPI(undefined);
-    });
+    }, 1, undefined);
 
-    stream.start(1);
     stream.subscribe(notify);
 
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -84,10 +83,9 @@ describe('createStream with timeout/promise', () => {
         .then(next);
 
       return withAPI(undefined);
-    });
+    }, 1, undefined);
     stream.subscribe(notify);
 
-    stream.start(1);
     await stream.isStarted()
 
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -107,9 +105,8 @@ describe('createStream with cleanup', () => {
       let _seed = seed
       const intervalId = setInterval(() => next(_seed++), 100);
       return withController(() => clearInterval(intervalId), undefined);
-    });
+    }, 1, undefined);
 
-    stream.start(1);
     stream.subscribe(notify);
 
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -126,9 +123,8 @@ describe('createStream with cleanup', () => {
     const stream = createStream<number>(({ next }, seed) => {
       const timeoutId = setTimeout(() => next(seed + 1), 100);
       return withController(() => clearTimeout(timeoutId), undefined);
-    });
+    }, 1, undefined);
 
-    stream.start(1);
     stream.subscribe(notify);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
