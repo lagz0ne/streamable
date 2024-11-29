@@ -1,0 +1,39 @@
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/streambly/**"
+
+name: release-please
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4 # v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - run: corepack enable
+
+      - uses: GoogleCloudPlatform/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+          package-name: streambly
+
+      - run: yarn build
+        if: ${{ steps.release.outputs.release_created }}
+
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+        if: ${{ steps.release.outputs.release_created }}
