@@ -61,6 +61,7 @@ jobs:
 
   build-and-release:
     needs: [check-changes]
+    if: needs.check-changes.outputs.strembly_changes == 'changes' || needs.check-changes.outputs.strembly_react_changes == 'changes'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
