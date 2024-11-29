@@ -6,8 +6,8 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      release-type:
-        description: 'Release type (major, minor, patch)'
+      version-type:
+        description: 'Release version type (major, minor, patch)'
         required: false
         default: 'patch'
       packages:
@@ -43,7 +43,8 @@ jobs:
         if: env.strembly_changes == 'changes' || github.event.inputs.packages == 'strembly' || github.event.inputs.packages == 'all'
         uses: googleapis/release-please-action@v4
         with:
-          release-type: ${{ github.event.inputs.release-type || 'patch' }}
+          release-type: node
+          version: ${{ github.event.inputs.release-type || 'patch' }}
           package-name: strembly
           path: packages/strembly
           force: ${{ github.event.inputs.force || 'false' }}
@@ -52,7 +53,8 @@ jobs:
         if: env.strembly_react_changes == 'changes' || github.event.inputs.packages == 'strembly-react' || github.event.inputs.packages == 'all'
         uses: googleapis/release-please-action@v4
         with:
-          release-type: ${{ github.event.inputs.release-type || 'patch' }}
+          release-type: node
+          version: ${{ github.event.inputs.release-type || 'patch' }}
           package-name: strembly-react
           path: packages/strembly-react
           force: ${{ github.event.inputs.force || 'false' }}
