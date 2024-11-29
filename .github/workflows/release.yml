@@ -32,28 +32,30 @@ jobs:
       - name: Check for changes in strembly
         id: strembly-changes
         run: |
-          if git diff --quiet HEAD^ HEAD -- packages/strembly; then echo "no changes" >> $GITHUB_ENV; else echo "changes" >> $GITHUB_ENV; fi
+          if git diff --quiet HEAD^ HEAD -- packages/strembly; then echo "strembly_changes=no changes" >> $GITHUB_ENV; else echo "strembly_changes=changes" >> $GITHUB_ENV; fi
 
       - name: Check for changes in strembly-react
         id: strembly-react-changes
         run: |
-          if git diff --quiet HEAD^ HEAD -- packages/strembly-react; then echo "no changes" >> $GITHUB_ENV; else echo "changes" >> $GITHUB_ENV; fi
+          if git diff --quiet HEAD^ HEAD -- packages/strembly-react; then echo "strembly_react_changes=no changes" >> $GITHUB_ENV; else echo "strembly_react_changes=changes" >> $GITHUB_ENV; fi
 
       - name: Create PR for strembly
-        if: env.strembly-changes == 'changes' || github.event.inputs.packages == 'strembly' || github.event.inputs.packages == 'all'
+        if: env.strembly_changes == 'changes' || github.event.inputs.packages == 'strembly' || github.event.inputs.packages == 'all'
         uses: google-github-actions/release-please-action@v4
         with:
           release-type: ${{ github.event.inputs.release-type || 'default' }}
           package-name: strembly
           path: packages/strembly
+          force: ${{ github.event.inputs.force || 'false' }}
 
       - name: Create PR for strembly-react
-        if: env.strembly-react-changes == 'changes' || github.event.inputs.packages == 'strembly-react' || github.event.inputs.packages == 'all'
+        if: env.strembly_react_changes == 'changes' || github.event.inputs.packages == 'strembly-react' || github.event.inputs.packages == 'all'
         uses: google-github-actions/release-please-action@v4
         with:
           release-type: ${{ github.event.inputs.release-type || 'default' }}
           package-name: strembly-react
           path: packages/strembly-react
+          force: ${{ github.event.inputs.force || 'false' }}
 
   build-and-release:
     needs: [check-changes]
