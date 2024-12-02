@@ -1,33 +1,32 @@
 # Introducing ꜱᴛʀᴇᴀᴍʙʟʏ
 
-ꜱᴛʀᴇᴀᴍʙʟʏ is a simple library inspired heavily by React's reactivity. In fact, one of the ꜱᴛʀᴇᴀᴍʙʟʏ's design goal that's the app can be used with React
+ꜱᴛʀᴇᴀᴍʙʟʏ is a simple library inspired heavily by React's reactivity. In fact, one of ꜱᴛʀᴇᴀᴍʙʟʏ's design goals is that the app can be used with React.
 
 ## Motivation
 
-ꜱᴛʀᴇᴀᴍʙʟʏ is designed to offer a simple way to create reactable objects/services, whatever you call it. 
+ꜱᴛʀᴇᴀᴍʙʟʏ is designed to offer a simple way to create reactive objects/services, whatever you call it.
 
-This is what ꜱᴛʀᴇᴀᴍʙʟʏ composed of
+This is what ꜱᴛʀᴇᴀᴍʙʟʏ is composed of:
 
-- A source/ an entity, something to get started
+- A source/an entity, something to get started
 - An API to interact with the source
 - Certain facilities to go with its reactivity
 
-All together, you have ꜱᴛʀᴇᴀᴍʙʟʏ
+All together, you have ꜱᴛʀᴇᴀᴍʙʟʏ.
 
 ## Enough talking, show me the code
 
 ```typescript
 // Idiomatic counter
-const counterApp = createStreamable<number>(({ next }, initialValue)) {
-  let counter = initialValue
-
+const counterApp = createStreamable(({ next }, initialValue = 0)) {
   const interval = setInterval(() => {
     next(++counter)
   }, 1000)
 
-  return withEnder(() => {
-    clearInterval(interval)
-  })
+  return {
+    initialValue,
+    cleanup: () => clearInterval(interval),
+  }
 }
 ```
 
@@ -66,7 +65,7 @@ setInterval(() => {
 
 import { createStream } from "streambly-react";
 
-const { Provider, useController, useValueStream } = createStream(counterApp)
+const { Provider, useAPI, useValueStream } = createStream(counterApp)
 
 //....
 <Provider initialValue={...} >
@@ -75,5 +74,7 @@ const { Provider, useController, useValueStream } = createStream(counterApp)
 
 const count = useValueStream()
 <div>{count}</div>
+
+const inc = useAPI().inc
 
 ```
