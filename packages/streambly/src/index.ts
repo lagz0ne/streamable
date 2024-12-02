@@ -88,7 +88,7 @@ export function createStream<
   Context = undefined
 >(
   fn: Streamable<P, API, Context>,
-  initialValue: P,
+  initialValue: P | undefined,
   config: Context
 ): StreamInstance<P, API> {
   const listeners = new Set<Notifier>();

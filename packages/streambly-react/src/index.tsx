@@ -68,9 +68,8 @@ export function createStream<
 		initialValue,
 		context,
 	}: PropsWithChildren<
-		{
-			initialValue: P;
-		} & ConfigWithOptionalProps<{
+		ConfigWithOptionalProps<{
+			initialValue?: P;
 			context: Context;
 		}>
 	>) {
