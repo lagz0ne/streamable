@@ -179,7 +179,8 @@ export function createStream<
 
   return {
     stop,
-    isStarted: async () => await isStarted,
+    // biome-ignore lint/style/noNonNullAssertion: <explanation>
+    isStarted: isStarted ? () => isStarted! : undefined,
     subscribe: (listener: Notifier) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

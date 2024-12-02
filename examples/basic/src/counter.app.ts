@@ -12,7 +12,7 @@ type CounterAPI = {
 
 export const counter = streamable<CounterApp>()
   .api<CounterAPI>()
-  .impls(async ({ setCurrent }, initialValue = { autoCount: 0, math: 0 }) => {
+  .impls(({ setCurrent }, initialValue = { autoCount: 0, math: 0 }) => {
     const app = initialValue
 
     const interval = setInterval(() => {

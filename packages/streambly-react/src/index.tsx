@@ -33,35 +33,18 @@ export function createStream<
 	const streamableContext = createContext<StreamInstance<P, API> | null>(null);
 	const clone = rfdc();
 
-	function Provider({
+	function StreamReady({
+		stream,
 		children,
-		initialValue,
-		context,
-	}: PropsWithChildren<
-		{
-			initialValue: P;
-		} & ConfigWithOptionalProps<{
-			context: Context;
-		}>
-	>) {
-		const stream = useMemo(() => {
-			return _createStream<P, API, Context>(
-				streamable,
-				initialValue,
-				context as Context,
-			);
-		}, [streamable, initialValue, context]);
-
-		const [isStarted, setIsStarted] = useState<boolean>(
-			stream.isStarted === undefined,
-		);
+	}: PropsWithChildren<{
+		stream: StreamInstance<P, API>;
+	}>) {
+		const [isStarted, setIsStarted] = useState(stream.isStarted === undefined);
 
 		useEffect(() => {
 			const checkIsStarted = async () => {
-				if (stream.isStarted !== undefined) {
-					await stream.isStarted();
-					setIsStarted(true);
-				}
+				stream.isStarted && (await stream.isStarted());
+				setIsStarted(true);
 			};
 
 			checkIsStarted();
@@ -77,6 +60,35 @@ export function createStream<
 			<streamableContext.Provider value={stream}>
 				{children}
 			</streamableContext.Provider>
+		);
+	}
+
+	function Provider({
+		children,
+		initialValue,
+		context,
+	}: PropsWithChildren<
+		{
+			initialValue: P;
+		} & ConfigWithOptionalProps<{
+			context: Context;
+		}>
+	>) {
+		const version = useRef(0);
+
+		const stream = useMemo(() => {
+			version.current++;
+			return _createStream<P, API, Context>(
+				streamable,
+				initialValue,
+				context as Context,
+			);
+		}, [streamable, initialValue, context]);
+
+		return (
+			<StreamReady key={version.current} stream={stream}>
+				{children}
+			</StreamReady>
 		);
 	}
 
