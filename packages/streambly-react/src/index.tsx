@@ -137,7 +137,7 @@ export function createStream<
 	return {
 		Provider,
 		useStreamable,
-		useController: useAPI,
+		useAPI,
 		useValueStream,
 	};
 }

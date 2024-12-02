@@ -33,7 +33,7 @@ function CountApp() {
 
 function MathApp() {
 	const math = counterStream.useValueStream((v) => v.math);
-	const counterAPI = counterStream.useController();
+	const counterAPI = counterStream.useAPI();
 	return (
 		<div>
 			<button type="button" onClick={counterAPI.inc}>
