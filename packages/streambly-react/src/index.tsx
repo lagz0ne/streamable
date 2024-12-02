@@ -11,39 +11,59 @@ import React, {
 import {
 	type StreamSPI,
 	createStream as _createStream,
+	isDifferent,
 	type StreamInstance,
 	type Streamable,
 } from "streambly";
+import rfdc from "rfdc";
+
+type GetMandatoryKeys<T> = {
+	[P in keyof T]: T[P] extends Exclude<T[P], undefined> ? P : never;
+}[keyof T];
+
+type MandatoryProps<T> = Pick<T, GetMandatoryKeys<T>>;
+
+type ConfigWithOptionalProps<T> = Partial<T> & MandatoryProps<T>;
 
 export function createStream<
 	P,
 	API extends StreamSPI = undefined,
-	Config = undefined,
->(streamable: Streamable<P, API, Config>) {
+	Context = undefined,
+>(streamable: Streamable<P, API, Context>) {
 	const streamableContext = createContext<StreamInstance<P, API> | null>(null);
+	const clone = rfdc();
 
 	function Provider({
 		children,
 		initialValue,
-		config,
-	}: PropsWithChildren<{
-		initialValue: P;
-		config: Config;
-	}>) {
+		context,
+	}: PropsWithChildren<
+		{
+			initialValue: P;
+		} & ConfigWithOptionalProps<{
+			context: Context;
+		}>
+	>) {
 		const stream = useMemo(() => {
-			return _createStream<P, API, Config>(streamable, initialValue, config);
-		}, [streamable, initialValue, config]);
+			return _createStream<P, API, Context>(
+				streamable,
+				initialValue,
+				context as Context,
+			);
+		}, [streamable, initialValue, context]);
 
-		const [isStarted, setIsStarted] = useState<boolean>(false);
+		const [isStarted, setIsStarted] = useState<boolean>(
+			stream.isStarted === undefined,
+		);
 
 		useEffect(() => {
 			const checkIsStarted = async () => {
-				const result = stream.isStarted();
-				if (result !== undefined) {
-					await result;
+				if (stream.isStarted !== undefined) {
+					await stream.isStarted();
+					setIsStarted(true);
 				}
-				setIsStarted(true);
 			};
+
 			checkIsStarted();
 
 			return stream.stop;
@@ -71,7 +91,7 @@ export function createStream<
 		return stream;
 	}
 
-	function useController() {
+	function useAPI() {
 		const stream = useContext(streamableContext);
 		if (stream === null) {
 			throw new Error(
@@ -84,33 +104,21 @@ export function createStream<
 
 	function useValueStream<O = P>(slice?: (value: P) => O): O extends P ? P : O {
 		const stream = useStreamable();
-		const versionRef = useRef<number>();
 		const valueRef = useRef<O | P>();
 
-		if (versionRef.current === undefined) {
-			versionRef.current = stream.version();
-		}
-
 		if (valueRef.current === undefined) {
-			valueRef.current = structuredClone(
-				slice ? slice(stream.value()) : stream.value(),
-			);
+			valueRef.current = clone(slice ? slice(stream.value()) : stream.value());
 		}
 
 		return useSyncExternalStore(stream.subscribe, () => {
-			if (versionRef.current === stream.version()) {
+			const nextValue = clone(slice ? slice(stream.value()) : stream.value());
+			const diffed = isDifferent(valueRef.current, nextValue);
+
+			if (!diffed) {
 				return valueRef.current as O extends P ? P : O;
 			}
 
-			const nextValue = slice ? slice(stream.value()) : stream.value();
-			if (JSON.stringify(nextValue) === JSON.stringify(valueRef.current)) {
-				return valueRef.current as O extends P ? P : O;
-			}
-
-			versionRef.current = stream.version();
-			valueRef.current = structuredClone(
-				slice ? slice(stream.value()) : stream.value(),
-			);
+			valueRef.current = nextValue;
 			return valueRef.current as O extends P ? P : O;
 		});
 	}
@@ -118,7 +126,7 @@ export function createStream<
 	return {
 		Provider,
 		useStreamable,
-		useController,
+		useController: useAPI,
 		useValueStream,
 	};
 }

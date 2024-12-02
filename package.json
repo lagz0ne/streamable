@@ -5,5 +5,9 @@
     "packages/*",
     "examples/*"
   ],
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "dependencies": {
+    "microdiff": "^1.4.0",
+    "rfdc": "^1.4.1"
+  }
 }

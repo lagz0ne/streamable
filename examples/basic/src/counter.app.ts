@@ -1,4 +1,4 @@
-import { createStreamable, withController } from "streambly"
+import { streamable } from "streambly"
 
 type CounterApp = {
   autoCount: number
@@ -10,27 +10,31 @@ type CounterAPI = {
   minus: () => void
 }
 
-export const counter = createStreamable<CounterApp, CounterAPI>(async (notifier, initialValue) => {
-  const app = structuredClone(initialValue)
+export const counter = streamable<CounterApp>()
+  .api<CounterAPI>()
+  .impls(async ({ setCurrent }, initialValue = { autoCount: 0, math: 0 }) => {
+    const app = initialValue
 
-  const interval = setInterval(() => {
-    ++app.autoCount
-    notifier.next(app)
-  }, 5000)
+    const interval = setInterval(() => {
+      app.autoCount++
+      setCurrent(app)
+    }, 5000)
 
-  const counterApi: CounterAPI = {
-    inc: () => {
-      app.math++
-      notifier.next(app)
-    },
-    minus: () => {
-      app.math--
-      notifier.next(app)
+    const counterApi: CounterAPI = {
+      inc: () => {
+        app.math++
+        setCurrent(app)
+      },
+      minus: () => {
+        app.math--
+        setCurrent(app)
+      }
     }
-  }
 
-  return withController(() => {
-    clearInterval(interval)
-  }, counterApi)
-})
+    return {
+      initialValue: app,
+      controller: counterApi,
+      cleanup: () => clearInterval(interval)
+    }
+  })
 

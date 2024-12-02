@@ -7,7 +7,7 @@ describe("counter app should work", () => {
   it("should function", async () => {
     const stream = createStream(counter, { autoCount: 0, math: 0 }, undefined)
 
-    await stream.isStarted()
+    stream.isStarted && await stream.isStarted()
 
     expect(stream.value().math).toBe(0)
     stream.controller().inc()

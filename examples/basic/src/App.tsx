@@ -4,7 +4,7 @@ import { counterStream } from "./counter";
 export function Home() {
 	const [initialApp] = useState(() => ({ autoCount: 0, math: 0 }));
 	return (
-		<counterStream.Provider initialValue={initialApp} config={undefined}>
+		<counterStream.Provider initialValue={initialApp}>
 			<CountApp />
 			<MathApp />
 		</counterStream.Provider>

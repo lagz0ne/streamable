@@ -28,6 +28,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "microdiff": "^1.4.0",
+    "rfdc": "^1.4.1",
     "streambly": "workspace: *",
     "typescript": "^5.7.2"
   }

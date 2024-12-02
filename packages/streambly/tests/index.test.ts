@@ -1,20 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createStream, createStreamable, withAPI, withController } from '../src/index';
+import { createStream, streamable } from '../src/index';
 
 type API = {
   inc: () => void
 }
 
 describe('createStream', () => {
-  const numberStream = createStreamable<number, API>(({ next }, seed) => {
-    let _seed = seed
-
-    return withAPI({
-      inc: () => {
-        next(++_seed);
+  const numberStream = streamable<number>()
+    .api<API>()
+    .impls((({ setCurrent, getCurrent }, seed = 0) => {
+      return {
+        initialValue: seed,
+        cleanup: () => { },
+        controller: { inc: () => setCurrent(getCurrent() + 1) }
       }
-    })
-  })
+    }))
 
   it('should start and stop the stream correctly', async () => {
     const notify = vi.fn()
@@ -22,7 +22,8 @@ describe('createStream', () => {
 
     const unsub = stream.subscribe(notify)
 
-    await stream.isStarted()
+    stream.isStarted && await stream.isStarted()
+
     expect(stream.value()).toBe(1);
 
     stream.controller().inc()
@@ -42,9 +43,13 @@ describe('createStream', () => {
 describe('createStream with timeout/promise', () => {
   it('should handle timeout correctly', async () => {
     const notify = vi.fn();
-    const stream = createStream<number>(({ next }, seed) => {
-      setTimeout(() => next(seed + 1), 100);
-      return withAPI(undefined);
+    const stream = createStream(({ setCurrent }, seed = 0) => {
+      setTimeout(() => setCurrent(seed + 1), 100);
+
+      return {
+        initialValue: seed,
+        controller: { inc: () => setCurrent(seed + 1) }
+      };
     }, 1, undefined);
 
     stream.subscribe(notify);
@@ -58,10 +63,14 @@ describe('createStream with timeout/promise', () => {
 
   it('should handle promise correctly', async () => {
     const notify = vi.fn();
-    const stream = createStream<number>(({ next }, seed) => {
+    const stream = createStream(({ setCurrent: next }, seed = 0) => {
       new Promise<number>((resolve) => setTimeout(() => resolve(seed + 1), 100))
         .then(next);
-      return withAPI(undefined);
+
+      return {
+        initialValue: seed,
+        controller: { inc: () => next(seed + 1) }
+      }
     }, 1, undefined);
 
     stream.subscribe(notify);
@@ -76,17 +85,20 @@ describe('createStream with timeout/promise', () => {
   it("can use async function", async () => {
     const notify = vi.fn();
 
-    const stream = createStream<number>(async ({ next }, seed) => {
+    const stream = createStream(async ({ setCurrent }, seed = 0) => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       new Promise<number>((resolve) => setTimeout(() => resolve(seed + 1), 100))
-        .then(next);
+        .then(setCurrent);
 
-      return withAPI(undefined);
+      return {
+        initialValue: seed,
+        controller: { inc: () => setCurrent(seed + 1) }
+      };
     }, 1, undefined);
     stream.subscribe(notify);
 
-    await stream.isStarted()
+    stream.isStarted && await stream.isStarted()
 
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect(stream.value()).toBe(2);
@@ -101,10 +113,14 @@ describe('createStream with cleanup', () => {
     const notify = vi.fn();
     const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
 
-    const stream = createStream<number>(({ next }, seed) => {
+    const stream = createStream(({ setCurrent }, seed = 0) => {
       let _seed = seed
-      const intervalId = setInterval(() => next(_seed++), 100);
-      return withController(() => clearInterval(intervalId), undefined);
+      const intervalId = setInterval(() => setCurrent(_seed++), 100);
+      return {
+        initialValue: seed,
+        cleanup: () => clearInterval(intervalId),
+        controller: { inc: () => setCurrent(_seed++) }
+      }
     }, 1, undefined);
 
     stream.subscribe(notify);
@@ -120,9 +136,13 @@ describe('createStream with cleanup', () => {
     const notify = vi.fn();
     const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
 
-    const stream = createStream<number>(({ next }, seed) => {
-      const timeoutId = setTimeout(() => next(seed + 1), 100);
-      return withController(() => clearTimeout(timeoutId), undefined);
+    const stream = createStream(({ setCurrent }, seed = 0) => {
+      const timeoutId = setTimeout(() => setCurrent(seed + 1), 100);
+      return {
+        initialValue: seed,
+        cleanup: () => clearTimeout(timeoutId),
+        controller: { inc: () => setCurrent(seed + 1) }
+      }
     }, 1, undefined);
 
     stream.subscribe(notify);
