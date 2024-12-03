@@ -1,14 +1,20 @@
 {
   "name": "streambly-react",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Easypeasy package to stream and listenable",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lagz0ne/streambly.git"
+  },
   "peerDependencies": {
     "@types/react": "18",
     "react": "18",
-    "streambly": "workspace:*"
+    "streambly": "^1.0.1"
   },
   "devDependencies": {
     "@types/react": "18",
     "react": "18",
+    "streambly": "workspace: *",
     "tsup": "^8.3.5"
   },
   "main": "dist/index.js",
@@ -30,7 +36,6 @@
   "dependencies": {
     "microdiff": "^1.4.0",
     "rfdc": "^1.4.1",
-    "streambly": "workspace: *",
     "typescript": "^5.7.2"
   }
 }

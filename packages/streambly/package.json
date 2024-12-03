@@ -1,7 +1,12 @@
 {
   "name": "streambly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Easypeasy package to stream and listenable",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lagz0ne/streambly.git"
+  },
+  "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

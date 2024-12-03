@@ -49,11 +49,13 @@ export type Streamable<
 ) => StreamController<P, API> | Promise<StreamController<P, API>>;
 
 export type StreamInstance<P, API extends StreamSPI> = {
+  id: number
   subscribe: (listener: Notifier) => () => void;
   value: () => P;
   stop: () => void;
   controller: () => API
   isStarted?: () => Promise<void>
+  state: () => 'stop' | 'starting' | 'running'
 }
 
 type StreamState<P, API extends StreamSPI> =
@@ -178,12 +180,15 @@ export function createStream<
   }
 
   return {
+    id: new Date().getTime(),
     stop,
     // biome-ignore lint/style/noNonNullAssertion: <explanation>
     isStarted: isStarted ? () => isStarted! : undefined,
     subscribe: (listener: Notifier) => {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener)
+      };
     },
     value: () => {
       if (state.state !== "running") {
@@ -198,6 +203,9 @@ export function createStream<
       }
 
       return state.controller as API;
+    },
+    state: () => {
+      return state.state
     }
   } satisfies StreamInstance<P, API>;
 }

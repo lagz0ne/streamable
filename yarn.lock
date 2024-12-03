@@ -1189,8 +1189,8 @@ __metadata:
     "@vitejs/plugin-react": "npm:^4.3.4"
     react: "npm:^18.3.1"
     react-dom: "npm:^18.3.1"
-    streambly: "workspace:*"
-    streambly-react: "workspace:*"
+    streambly: "npm:^1.0.0"
+    streambly-react: "npm:^1.0.0"
     vite: "npm:^6.0.1"
     vitest: "npm:^2.1.6"
   languageName: unknown
@@ -1534,6 +1534,13 @@ __metadata:
     promise-retry: "npm:^2.0.1"
     ssri: "npm:^10.0.0"
   checksum: 10c0/df5f4dbb6d98153b751bccf4dc4cc500de85a96a9331db9805596c46aa9f99d9555983954e6c1266d9f981ae37a9e4647f42b9a4bb5466f867f4012e582c9e7e
+  languageName: node
+  linkType: hard
+
+"microdiff@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "microdiff@npm:1.4.0"
+  checksum: 10c0/25c3bdb62a2c4f7a881570c8f923adfe63185a4b8b690a285c213af99ebdb3e6481fa04f05422044230f40c9109513c511e5d29dbd1071891b8031eef779eb2c
   languageName: node
   linkType: hard
 
@@ -1893,6 +1900,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rfdc@npm:^1.4.1":
+  version: 1.4.1
+  resolution: "rfdc@npm:1.4.1"
+  checksum: 10c0/4614e4292356cafade0b6031527eea9bc90f2372a22c012313be1dcc69a3b90c7338158b414539be863fa95bfcb2ddcd0587be696841af4e6679d85e62c060c7
+  languageName: node
+  linkType: hard
+
 "rollup@npm:^4.23.0, rollup@npm:^4.24.0":
   version: 4.27.4
   resolution: "rollup@npm:4.27.4"
@@ -2103,29 +2117,35 @@ __metadata:
 "streamable-home@workspace:.":
   version: 0.0.0-use.local
   resolution: "streamable-home@workspace:."
+  dependencies:
+    microdiff: "npm:^1.4.0"
+    rfdc: "npm:^1.4.1"
   languageName: unknown
   linkType: soft
 
-"streambly-react@workspace:*, streambly-react@workspace:packages/streambly-react":
+"streambly-react@npm:^1.0.0, streambly-react@workspace:packages/streambly-react":
   version: 0.0.0-use.local
   resolution: "streambly-react@workspace:packages/streambly-react"
   dependencies:
     "@types/react": "npm:18"
+    microdiff: "npm:^1.4.0"
     react: "npm:18"
+    rfdc: "npm:^1.4.1"
     streambly: "workspace: *"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
   peerDependencies:
     "@types/react": 18
     react: 18
-    streambly: "workspace:*"
+    streambly: ^1.0.1
   languageName: unknown
   linkType: soft
 
-"streambly@workspace: *, streambly@workspace:*, streambly@workspace:packages/streambly":
+"streambly@npm:^1.0.0, streambly@workspace: *, streambly@workspace:packages/streambly":
   version: 0.0.0-use.local
   resolution: "streambly@workspace:packages/streambly"
   dependencies:
+    microdiff: "npm:^1.4.0"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^2.1.6"

@@ -5,8 +5,9 @@ import React, {
 	useEffect,
 	useContext,
 	useSyncExternalStore,
-	useMemo,
 	useState,
+	useMemo,
+	type EffectCallback,
 } from "react";
 import {
 	type StreamSPI,
@@ -33,34 +34,25 @@ export function createStream<
 	const streamableContext = createContext<StreamInstance<P, API> | null>(null);
 	const clone = rfdc();
 
-	function StreamReady({
-		stream,
+	function StreamInstance({
+		instance,
 		children,
-	}: PropsWithChildren<{
-		stream: StreamInstance<P, API>;
-	}>) {
-		const [isStarted, setIsStarted] = useState(stream.isStarted === undefined);
+	}: PropsWithChildren<{ instance: StreamInstance<P, API> }>) {
+		const [isReady, setReady] = useState(() => instance.state() === "running");
 
 		useEffect(() => {
-			const checkIsStarted = async () => {
-				stream.isStarted && (await stream.isStarted());
-				setIsStarted(true);
-			};
+			instance.isStarted?.().then(() => {
+				setReady(true);
+			});
+		});
 
-			checkIsStarted();
-
-			return stream.stop;
-		}, [stream]);
-
-		if (!isStarted) {
-			return null;
+		if (isReady) {
+			return (
+				<streamableContext.Provider value={instance}>
+					{children}
+				</streamableContext.Provider>
+			);
 		}
-
-		return (
-			<streamableContext.Provider value={stream}>
-				{children}
-			</streamableContext.Provider>
-		);
 	}
 
 	function Provider({
@@ -73,22 +65,51 @@ export function createStream<
 			context: Context;
 		}>
 	>) {
-		const version = useRef(0);
+		const streamRef = useRef<StreamInstance<P, API> | null>(null);
+		const [, setIsReady] = useState(false);
 
-		const stream = useMemo(() => {
-			version.current++;
-			return _createStream<P, API, Context>(
+		useEffect(() => {
+			const stream = _createStream(
 				streamable,
 				initialValue,
 				context as Context,
 			);
+
+			streamRef.current = stream;
+			let starting = false;
+
+			if (stream.isStarted === undefined) {
+				setIsReady(true);
+			} else {
+				starting = true;
+				stream.isStarted().then(() => {
+					setIsReady(true);
+					starting = false;
+				});
+			}
+
+			return () => {
+				streamRef.current = null;
+				!starting && stream.state() !== "running" && stream.stop();
+			};
 		}, [streamable, initialValue, context]);
 
+		if (!streamRef.current) {
+			return null;
+		}
+
 		return (
-			<StreamReady key={version.current} stream={stream}>
-				{children}
-			</StreamReady>
+			<StreamInstance instance={streamRef.current}>{children}</StreamInstance>
 		);
+	}
+
+	function useVersion() {
+		const stream = useContext(streamableContext);
+		if (!stream) {
+			throw new Error("useVersion must be used within a Streamable.Provider");
+		}
+
+		return stream.id;
 	}
 
 	function useStreamable() {
@@ -103,13 +124,7 @@ export function createStream<
 	}
 
 	function useAPI() {
-		const stream = useContext(streamableContext);
-		if (stream === null) {
-			throw new Error(
-				"useController must be used within a Streamable.Provider",
-			);
-		}
-
+		const stream = useStreamable();
 		return stream.controller();
 	}
 
@@ -121,22 +136,32 @@ export function createStream<
 			valueRef.current = clone(slice ? slice(stream.value()) : stream.value());
 		}
 
-		return useSyncExternalStore(stream.subscribe, () => {
-			const nextValue = clone(slice ? slice(stream.value()) : stream.value());
-			const diffed = isDifferent(valueRef.current, nextValue);
+		const [subscribe, getSnapshot] = useMemo(() => {
+			return [
+				stream.subscribe,
+				() => {
+					const nextValue = clone(
+						slice ? slice(stream.value()) : stream.value(),
+					);
+					const diffed = isDifferent(valueRef.current, nextValue);
 
-			if (!diffed) {
-				return valueRef.current as O extends P ? P : O;
-			}
+					if (!diffed) {
+						return valueRef.current as O extends P ? P : O;
+					}
 
-			valueRef.current = nextValue;
-			return valueRef.current as O extends P ? P : O;
-		});
+					valueRef.current = nextValue;
+					return valueRef.current as O extends P ? P : O;
+				},
+			] as const;
+		}, [stream, slice]);
+
+		return useSyncExternalStore(subscribe, getSnapshot);
 	}
 
 	return {
 		Provider,
 		useStreamable,
+		useVersion,
 		useAPI,
 		useValueStream,
 	};

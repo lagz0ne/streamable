@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { counterStream } from "./counter";
+import { App } from "./Todo";
 
 export function Home() {
 	const [initialApp, setInitialApp] = useState(() => ({
@@ -8,16 +9,19 @@ export function Home() {
 	}));
 
 	return (
-		<counterStream.Provider initialValue={initialApp}>
-			<CountApp />
-			<MathApp />
-			<button
-				type="button"
-				onClick={() => setInitialApp({ autoCount: 0, math: 0 })}
-			>
-				Reset
-			</button>
-		</counterStream.Provider>
+		<>
+			<App />
+			<counterStream.Provider initialValue={initialApp}>
+				<CountApp />
+				<MathApp />
+				<button
+					type="button"
+					onClick={() => setInitialApp({ autoCount: 0, math: 0 })}
+				>
+					Reset
+				</button>
+			</counterStream.Provider>
+		</>
 	);
 }
 
