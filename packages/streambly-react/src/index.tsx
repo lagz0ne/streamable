@@ -7,7 +7,6 @@ import React, {
 	useSyncExternalStore,
 	useState,
 	useMemo,
-	type EffectCallback,
 } from "react";
 import {
 	type StreamSPI,

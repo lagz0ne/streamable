@@ -1,7 +1,7 @@
 import diff from "microdiff"
 import clone from "rfdc"
 
-export type Notifier = () => void;
+export type Notifier<P> = (p: P) => void;
 export type StreamEnder = () => void;
 export type StreamSPI = Record<string, unknown> | undefined
 export type ErrorHandler = (error: unknown) => void
@@ -33,9 +33,9 @@ export function isDifferent(a: unknown, b: unknown): boolean {
 }
 
 export type Announcer<P> = {
-  setCurrent: (p: P) => void;
-  getCurrent: () => P;
-  end: (p: P) => void;
+  set: (p: P | ((p: P) => P)) => void;
+  get: () => P;
+  end: (p: P | ((p: P) => P)) => void;
 };
 
 export type Streamable<
@@ -48,20 +48,33 @@ export type Streamable<
   config: Context
 ) => StreamController<P, API> | Promise<StreamController<P, API>>;
 
+type States = "stop" | "starting" | "running" | "stopped" | "error";
+
 export type StreamInstance<P, API extends StreamSPI> = {
   id: number
-  subscribe: (listener: Notifier) => () => void;
+  subscribe: (listener: Notifier<P>) => () => void;
   value: () => P;
   stop: () => void;
   controller: () => API
   isStarted?: () => Promise<void>
-  state: () => 'stop' | 'starting' | 'running'
+  state: () => States
 }
 
 type StreamState<P, API extends StreamSPI> =
   | { state: "stop" }
   | { state: "starting", signal: Promise<unknown> }
   | { state: "running", unsubscribe?: StreamEnder, container: { current: P }, snapshot: P, controller: API }
+  | { state: "stopped", container: { current: P }, snapshot: P }
+  | { state: "error", error: unknown }
+
+function isInState<P, API extends StreamSPI, S extends States>(
+  state: StreamState<P, API>,
+  expectedStates: S | S[]
+): state is Extract<StreamState<P, API>, { state: S }> {
+  return Array.isArray(expectedStates)
+    ? expectedStates.includes(state.state as S)
+    : state.state === expectedStates;
+}
 
 function defferedPromise<P>(): Promise<P> & {
   resolve: (value: P) => void;
@@ -93,7 +106,7 @@ export function createStream<
   initialValue: P | undefined,
   config: Context
 ): StreamInstance<P, API> {
-  const listeners = new Set<Notifier>();
+  const listeners = new Set<Notifier<P>>();
 
   let state: StreamState<P, API> = { state: "stop" };
   let isStarted: Promise<void> | undefined = undefined;
@@ -115,30 +128,32 @@ export function createStream<
     state = { state: "stop" };
   }
 
-  const notifier: Announcer<P> = {
-    setCurrent: (next: P) => {
-      if (state.state === "stop" || state.state === "starting") {
-        console.warn("Stream is yet started stopped");
-        return;
-      }
+  function notify(p: P) {
+    for (const listener of listeners) {
+      listener(p);
+    }
+  }
 
-      if (isObject(next) && isObject(state.snapshot)) {
-        const diffResult = diff(state.snapshot, next);
-        if (diffResult.length === 0) {
-          return;
+  const notifier: Announcer<P> = {
+    set: (input) => {
+      if (isInState(state, 'running')) {
+        const next = typeof input === "function" ? (input as (p: P) => P)(state.container.current) : input;
+
+        if (isDifferent(state.container.current, next)) {
+          state.container.current = next;
+          state.snapshot = cloner(state.container.current)
+
+          notify(state.snapshot)
         }
       }
-
-      state.container.current = next;
-      state.snapshot = cloner(state.container.current)
-
-      for (const listener of listeners) {
-        listener();
-      }
     },
-    getCurrent: () => {
-      if (state.state === "stop" || state.state === "starting") {
+    get: () => {
+      if (isInState(state, ['stop', 'starting'])) {
         throw new StreamblyError("0004");
+      }
+
+      if (isInState(state, 'error')) {
+        throw state.error;
       }
 
       return state.container.current;
@@ -184,7 +199,7 @@ export function createStream<
     stop,
     // biome-ignore lint/style/noNonNullAssertion: <explanation>
     isStarted: isStarted ? () => isStarted! : undefined,
-    subscribe: (listener: Notifier) => {
+    subscribe: (listener: Notifier<P>) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener)
